@@ -1,3 +1,6 @@
+import HowItWorks from "../components/HowItWorks.jsx";
+import FAQ from "../components/FAQ.jsx";
+
 const services = [
   {
     num: "01",
@@ -30,7 +33,8 @@ const services = [
 
 export default function Services({ onBook, onContact }) {
   return (
-    <section style={{ background: "#fff", minHeight: "100vh", paddingTop: 100 }}>
+    <div style={{ background: "#fff", minHeight: "100vh", paddingTop: 100 }}>
+    <section style={{ background: "#fff" }}>
       <div style={{ maxWidth: 1200, margin: "0 auto", padding: "60px 24px" }}>
         <div style={{ textAlign: "center", marginBottom: 60 }}>
           <div
@@ -151,5 +155,9 @@ export default function Services({ onBook, onContact }) {
         </div>
       </div>
     </section>
+
+    <HowItWorks />
+    <FAQ />
+    </div>
   );
 }

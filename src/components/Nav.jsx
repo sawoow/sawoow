@@ -2,6 +2,14 @@ import { useState, useEffect } from "react";
 
 const pages = ["Your Journey Starts Here", "Why Luzze?", "Services", "Let's Connect"];
 
+const resetButton = {
+  background: "transparent",
+  border: "none",
+  padding: 0,
+  cursor: "pointer",
+  fontFamily: "inherit",
+};
+
 export default function Nav({ current, setCurrent }) {
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
@@ -14,13 +22,14 @@ export default function Nav({ current, setCurrent }) {
 
   return (
     <nav
+      aria-label="Primary"
       style={{
         position: "fixed",
         top: 0,
         left: 0,
         right: 0,
         zIndex: 100,
-        background: scrolled ? "rgba(74,92,106,0.97)" : "rgba(74,92,106,0.85)",
+        background: scrolled ? "rgba(74,92,106,0.97)" : "rgba(74,92,106,0.88)",
         backdropFilter: "blur(12px)",
         transition: "all 0.4s ease",
         borderBottom: "1px solid rgba(255,255,255,0.08)",
@@ -36,26 +45,28 @@ export default function Nav({ current, setCurrent }) {
           alignItems: "center",
         }}
       >
-        <div
+        <button
+          onClick={() => setCurrent(0)}
+          aria-label="Luzze Consultancy — home"
           style={{
+            ...resetButton,
             fontFamily: "'Playfair Display', Georgia, serif",
             fontSize: 20,
             color: "#fff",
             letterSpacing: 1,
-            cursor: "pointer",
           }}
-          onClick={() => setCurrent(0)}
         >
-          Luzze <span style={{ fontWeight: 300, opacity: 0.7 }}>consultancy</span>
-        </div>
+          Luzze <span style={{ fontWeight: 300, opacity: 0.8 }}>consultancy</span>
+        </button>
         <div style={{ display: "flex", gap: 32 }} className="desktop-nav">
           {pages.map((p, i) => (
-            <div
+            <button
               key={i}
               onClick={() => setCurrent(i)}
+              aria-current={current === i ? "page" : undefined}
               style={{
-                color: current === i ? "#3EA8C8" : "rgba(255,255,255,0.75)",
-                cursor: "pointer",
+                ...resetButton,
+                color: current === i ? "#3EA8C8" : "rgba(255,255,255,0.9)",
                 fontSize: 13,
                 letterSpacing: 1.5,
                 textTransform: "uppercase",
@@ -67,16 +78,19 @@ export default function Nav({ current, setCurrent }) {
               }}
             >
               {p}
-            </div>
+            </button>
           ))}
         </div>
-        <div
+        <button
           onClick={() => setOpen(!open)}
-          style={{ cursor: "pointer", padding: 8 }}
+          aria-label={open ? "Close menu" : "Open menu"}
+          aria-expanded={open}
+          style={{ ...resetButton, padding: 8 }}
           className="mobile-menu-btn"
         >
-          <div
+          <span
             style={{
+              display: "block",
               width: 24,
               height: 2,
               background: "#fff",
@@ -85,8 +99,9 @@ export default function Nav({ current, setCurrent }) {
               transform: open ? "rotate(45deg) translateY(8px)" : "none",
             }}
           />
-          <div
+          <span
             style={{
+              display: "block",
               width: 24,
               height: 2,
               background: "#fff",
@@ -95,8 +110,9 @@ export default function Nav({ current, setCurrent }) {
               transition: "all 0.3s",
             }}
           />
-          <div
+          <span
             style={{
+              display: "block",
               width: 24,
               height: 2,
               background: "#fff",
@@ -104,7 +120,7 @@ export default function Nav({ current, setCurrent }) {
               transform: open ? "rotate(-45deg) translateY(-8px)" : "none",
             }}
           />
-        </div>
+        </button>
       </div>
       {open && (
         <div
@@ -112,29 +128,32 @@ export default function Nav({ current, setCurrent }) {
           className="mobile-dropdown"
         >
           {pages.map((p, i) => (
-            <div
+            <button
               key={i}
               onClick={() => {
                 setCurrent(i);
                 setOpen(false);
               }}
+              aria-current={current === i ? "page" : undefined}
               style={{
+                ...resetButton,
+                textAlign: "left",
                 color: current === i ? "#3EA8C8" : "#fff",
                 fontSize: 16,
-                cursor: "pointer",
                 fontFamily: "'DM Sans', sans-serif",
                 padding: "8px 0",
-                borderBottom: "1px solid rgba(255,255,255,0.1)",
+                borderBottom: "1px solid rgba(255,255,255,0.12)",
               }}
             >
               {p}
-            </div>
+            </button>
           ))}
         </div>
       )}
       <style>{`
         @media(min-width:769px){ .mobile-menu-btn{display:none!important} .mobile-dropdown{display:none!important} }
         @media(max-width:768px){ .desktop-nav{display:none!important} }
+        nav button:focus-visible { outline: 2px solid #3EA8C8; outline-offset: 2px; }
       `}</style>
     </nav>
   );

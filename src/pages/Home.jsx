@@ -1,4 +1,5 @@
 import PlaceholderImage from "../components/PlaceholderImage.jsx";
+import Testimonials from "../components/Testimonials.jsx";
 
 export default function Home({ onBook }) {
   return (
@@ -63,7 +64,7 @@ export default function Home({ onBook }) {
               For those ready to return home to Uganda,
               <br />
               <span style={{ fontStyle: "italic", color: "#3EA8C8" }}>
-                We make journey journey
+                We make the journey
               </span>
               <br />
               clear, guided, and safe.
@@ -90,7 +91,7 @@ export default function Home({ onBook }) {
           </div>
           <PlaceholderImage
             src="/images/intro.png"
-            alt="Luzze Consultancy hero"
+            alt="Sauda from Luzze Consultancy — diaspora relocation advisory for returning to Uganda"
             label="Home page"
             monogram="L"
             style={{
@@ -194,7 +195,7 @@ export default function Home({ onBook }) {
                     padding: "0 8px",
                     fontSize: 10,
                     fontFamily: "'DM Sans', sans-serif",
-                    color: "rgba(255,255,255,0.4)",
+                    color: "rgba(255,255,255,0.65)",
                     letterSpacing: 3,
                     fontStyle: "normal",
                     textTransform: "uppercase",
@@ -208,6 +209,8 @@ export default function Home({ onBook }) {
           </div>
         </div>
       </section>
+
+      <Testimonials />
     </div>
   );
 }

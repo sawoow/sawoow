@@ -56,7 +56,7 @@ export default function Contact() {
                   fontFamily: "'DM Sans', sans-serif",
                   fontSize: 11,
                   letterSpacing: 3,
-                  color: "rgba(255,255,255,0.4)",
+                  color: "rgba(255,255,255,0.7)",
                   textTransform: "uppercase",
                   marginBottom: 8,
                 }}
@@ -78,19 +78,6 @@ export default function Contact() {
         </div>
 
         <ContactForm />
-
-        <div
-          style={{
-            marginTop: 80,
-            paddingTop: 24,
-            borderTop: "1px solid rgba(255,255,255,0.08)",
-            color: "rgba(255,255,255,0.3)",
-            fontSize: 12,
-            fontFamily: "'DM Sans', sans-serif",
-          }}
-        >
-          © Luzze Consultancy
-        </div>
       </div>
     </section>
   );

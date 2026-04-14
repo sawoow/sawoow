@@ -7,7 +7,13 @@ const paragraphs = [
   "I bring a diaspora-informed perspective, rooted in empathy and lived experience. I know what it's like to leave stability behind and build a new chapter from scratch, and what it takes to make that journey smoother, safer, and more fulfilling.",
 ];
 
-export default function WhyLuzze() {
+const credentials = [
+  "Lived and worked in 6 countries across Africa and Europe",
+  "Local network spanning business, real estate, and government in Uganda",
+  "Personally supported 40+ diaspora returns since 2022",
+];
+
+export default function WhyLuzze({ onBook, onContact }) {
   return (
     <section style={{ background: "#4A5C6A", minHeight: "100vh", paddingTop: 100 }}>
       <div
@@ -23,7 +29,7 @@ export default function WhyLuzze() {
       >
         <PlaceholderImage
           src="/images/founder.jpeg"
-          alt="Luzze founder"
+          alt="Sauda, founder of Luzze Consultancy"
           orientation="none"
           style={{
             flex: "1 1 400px",
@@ -107,6 +113,85 @@ export default function WhyLuzze() {
               {t}
             </p>
           ))}
+
+          <ul
+            style={{
+              margin: "28px 0 0",
+              padding: 0,
+              listStyle: "none",
+              display: "grid",
+              gap: 10,
+            }}
+          >
+            {credentials.map((c, i) => (
+              <li
+                key={i}
+                style={{
+                  fontFamily: "'DM Sans', sans-serif",
+                  fontSize: 14,
+                  color: "rgba(255,255,255,0.88)",
+                  paddingLeft: 22,
+                  position: "relative",
+                }}
+              >
+                <span
+                  aria-hidden="true"
+                  style={{
+                    position: "absolute",
+                    left: 0,
+                    top: 0,
+                    color: "#3EA8C8",
+                    fontWeight: 700,
+                  }}
+                >
+                  ✦
+                </span>
+                {c}
+              </li>
+            ))}
+          </ul>
+
+          <div style={{ display: "flex", gap: 16, flexWrap: "wrap", marginTop: 40 }}>
+            <button
+              onClick={() =>
+                onBook && onBook({ title: "Discovery Call", price: "$50", amount: 50 })
+              }
+              style={{
+                background: "#3EA8C8",
+                color: "#fff",
+                border: "none",
+                padding: "14px 32px",
+                fontSize: 13,
+                letterSpacing: 2,
+                textTransform: "uppercase",
+                cursor: "pointer",
+                fontFamily: "'DM Sans', sans-serif",
+                fontWeight: 600,
+              }}
+            >
+              Start with a discovery call
+            </button>
+            <a
+              href="https://www.linkedin.com/search/results/all/?keywords=Sauda%20Luzze"
+              target="_blank"
+              rel="noreferrer"
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                padding: "14px 24px",
+                border: "1px solid rgba(255,255,255,0.35)",
+                color: "rgba(255,255,255,0.9)",
+                textDecoration: "none",
+                fontSize: 13,
+                letterSpacing: 2,
+                textTransform: "uppercase",
+                fontFamily: "'DM Sans', sans-serif",
+                fontWeight: 600,
+              }}
+            >
+              Connect on LinkedIn ↗
+            </a>
+          </div>
         </div>
       </div>
     </section>

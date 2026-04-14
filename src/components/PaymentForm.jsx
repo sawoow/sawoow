@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { formatSlotRangeFull } from "../lib/time.js";
 
 const inputBase = {
   width: "100%",
@@ -122,14 +123,8 @@ export default function PaymentForm({ service, onPaid, onBack }) {
         <div style={{ fontSize: 22, color: "#4A5C6A", fontFamily: "'Playfair Display', serif" }}>
           {service.price}
         </div>
-        <div style={{ fontSize: 12, color: "rgba(74,92,106,0.6)", marginTop: 8 }}>
-          {service.slot.start.toLocaleString([], {
-            weekday: "long",
-            month: "short",
-            day: "numeric",
-            hour: "numeric",
-            minute: "2-digit",
-          })}
+        <div style={{ fontSize: 12, color: "rgba(74,92,106,0.75)", marginTop: 8, lineHeight: 1.5 }}>
+          {formatSlotRangeFull(service.slot.start, service.slot.end)}
         </div>
       </div>
 

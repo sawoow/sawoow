@@ -3,6 +3,27 @@ import Calendar from "./Calendar.jsx";
 import PaymentForm from "./PaymentForm.jsx";
 import { createEvent } from "../lib/gcal.js";
 import { sendBookingConfirm } from "../lib/email.js";
+import { formatSlotRangeFull } from "../lib/time.js";
+
+function logFailedBooking(payload) {
+  try {
+    const existing = JSON.parse(
+      localStorage.getItem("luzze.failedBookings") || "[]"
+    );
+    existing.push({
+      at: new Date().toISOString(),
+      customer: payload.customer,
+      service: { title: payload.service.title, price: payload.service.price },
+      slot: {
+        start: payload.slot.start.toISOString(),
+        end: payload.slot.end.toISOString(),
+      },
+    });
+    localStorage.setItem("luzze.failedBookings", JSON.stringify(existing));
+  } catch (err) {
+    console.warn("Could not persist failed booking", err);
+  }
+}
 
 export default function BookingModal({ service, onClose }) {
   const [step, setStep] = useState("calendar"); // calendar | payment | confirming | done | error
@@ -13,10 +34,15 @@ export default function BookingModal({ service, onClose }) {
   useEffect(() => {
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
+    const onKey = (e) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKey);
     return () => {
       document.body.style.overflow = prev;
+      window.removeEventListener("keydown", onKey);
     };
-  }, []);
+  }, [onClose]);
 
   const onSlot = (s) => {
     setSlot(s);
@@ -41,12 +67,15 @@ export default function BookingModal({ service, onClose }) {
           email: customer.email,
           service: service.title,
           price: service.price,
-          slotStart: slot.start.toLocaleString(),
-          slotEnd: slot.end.toLocaleString(),
+          slotStart: formatSlotRangeFull(slot.start, slot.end),
+          slotEnd: slot.end.toISOString(),
         }),
       ]);
       const eventFailed = eventRes.status === "rejected";
       const emailFailed = emailRes.status === "rejected";
+      if (eventFailed && emailFailed) {
+        logFailedBooking({ customer, service, slot });
+      }
       setResult({
         customer,
         eventFailed,
@@ -57,9 +86,29 @@ export default function BookingModal({ service, onClose }) {
       setStep("done");
     } catch (err) {
       console.error(err);
+      logFailedBooking({ customer, service, slot });
       setError("Something went wrong completing your booking.");
       setStep("error");
     }
+  };
+
+  const buildMailtoFallback = (customer) => {
+    const subject = encodeURIComponent(
+      `Luzze booking — ${service.title} — ${customer.name}`
+    );
+    const body = encodeURIComponent(
+      [
+        "Hi Sauda,",
+        "",
+        "My online booking didn't go through automatically. Please confirm this slot manually:",
+        "",
+        `Name: ${customer.name}`,
+        `Email: ${customer.email}`,
+        `Service: ${service.title} (${service.price})`,
+        `When: ${formatSlotRangeFull(slot.start, slot.end)}`,
+      ].join("\n")
+    );
+    return `mailto:sauda.luzze@gmail.com?subject=${subject}&body=${body}`;
   };
 
   return (
@@ -80,6 +129,9 @@ export default function BookingModal({ service, onClose }) {
     >
       <div
         onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="luzze-booking-title"
         className="luzze-modal"
         style={{
           background: "#fff",
@@ -129,6 +181,7 @@ export default function BookingModal({ service, onClose }) {
           {step === "error" && "Something went wrong"}
         </div>
         <h2
+          id="luzze-booking-title"
           style={{
             fontFamily: "'Playfair Display', serif",
             fontSize: "clamp(22px, 4vw, 30px)",
@@ -170,15 +223,7 @@ export default function BookingModal({ service, onClose }) {
               }}
             >
               You're booked in for{" "}
-              <strong>
-                {slot.start.toLocaleString([], {
-                  weekday: "long",
-                  month: "short",
-                  day: "numeric",
-                  hour: "numeric",
-                  minute: "2-digit",
-                })}
-              </strong>
+              <strong>{formatSlotRangeFull(slot.start, slot.end)}</strong>
               . {result.emailFailed || result.emailSkipped
                 ? "(A confirmation email could not be sent — Sauda will reach out directly.)"
                 : `A confirmation email is on its way to ${result.customer.email}.`}
@@ -187,8 +232,8 @@ export default function BookingModal({ service, onClose }) {
               <div
                 style={{
                   padding: 12,
-                  background: "rgba(255,200,120,0.1)",
-                  border: "1px solid rgba(255,200,120,0.3)",
+                  background: "rgba(255,200,120,0.12)",
+                  border: "1px solid rgba(255,200,120,0.35)",
                   color: "#7a5a18",
                   fontSize: 12,
                   marginBottom: 16,
@@ -198,6 +243,25 @@ export default function BookingModal({ service, onClose }) {
                 Heads up: the calendar event could not be written automatically (demo mode or
                 endpoint not configured). Sauda will add it manually.
               </div>
+            )}
+            {result.eventFailed && result.emailFailed && (
+              <a
+                href={buildMailtoFallback(result.customer)}
+                style={{
+                  display: "block",
+                  textAlign: "center",
+                  padding: 12,
+                  background: "rgba(199,90,90,0.12)",
+                  border: "1px solid rgba(199,90,90,0.35)",
+                  color: "#c75a5a",
+                  fontSize: 13,
+                  marginBottom: 16,
+                  textDecoration: "none",
+                  fontWeight: 600,
+                }}
+              >
+                Email Sauda directly to confirm →
+              </a>
             )}
             <button
               onClick={onClose}
@@ -221,22 +285,41 @@ export default function BookingModal({ service, onClose }) {
         {step === "error" && (
           <div>
             <div style={{ color: "#c75a5a", marginBottom: 20 }}>{error}</div>
-            <button
-              onClick={() => setStep("payment")}
-              style={{
-                background: "#3EA8C8",
-                color: "#fff",
-                border: "none",
-                padding: "12px 24px",
-                cursor: "pointer",
-                fontWeight: 600,
-                letterSpacing: 2,
-                textTransform: "uppercase",
-                fontSize: 12,
-              }}
-            >
-              Try again
-            </button>
+            <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+              <button
+                onClick={() => setStep("payment")}
+                style={{
+                  background: "#3EA8C8",
+                  color: "#fff",
+                  border: "none",
+                  padding: "12px 24px",
+                  cursor: "pointer",
+                  fontWeight: 600,
+                  letterSpacing: 2,
+                  textTransform: "uppercase",
+                  fontSize: 12,
+                }}
+              >
+                Try again
+              </button>
+              <a
+                href={`mailto:sauda.luzze@gmail.com?subject=Luzze%20booking%20help&body=My%20booking%20didn%27t%20go%20through.`}
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  padding: "12px 24px",
+                  border: "1px solid rgba(74,92,106,0.35)",
+                  color: "#4A5C6A",
+                  textDecoration: "none",
+                  fontSize: 12,
+                  letterSpacing: 2,
+                  textTransform: "uppercase",
+                  fontWeight: 600,
+                }}
+              >
+                Email Sauda
+              </a>
+            </div>
           </div>
         )}
       </div>

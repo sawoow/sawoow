@@ -70,6 +70,8 @@ export default function Services({ onBook, onContact }) {
                 borderRight: i < services.length - 1 ? "1px solid rgba(74,92,106,0.1)" : "none",
                 borderBottom: "1px solid rgba(74,92,106,0.1)",
                 position: "relative",
+                display: "flex",
+                flexDirection: "column",
               }}
             >
               <div
@@ -115,6 +117,7 @@ export default function Services({ onBook, onContact }) {
                   color: "#6b7c8a",
                   lineHeight: 1.8,
                   marginBottom: 32,
+                  flexGrow: 1,
                 }}
               >
                 {s.desc}
@@ -126,6 +129,7 @@ export default function Services({ onBook, onContact }) {
                     : onContact && onContact()
                 }
                 style={{
+                  alignSelf: "flex-start",
                   background: "transparent",
                   border: "1px solid #4A5C6A",
                   color: "#4A5C6A",
@@ -137,6 +141,7 @@ export default function Services({ onBook, onContact }) {
                   fontFamily: "'DM Sans', sans-serif",
                   fontWeight: 600,
                   transition: "all 0.3s",
+                  marginTop: "auto",
                 }}
               >
                 {s.btn}

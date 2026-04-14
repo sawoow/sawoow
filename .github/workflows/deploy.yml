@@ -32,9 +32,9 @@ jobs:
           VITE_GCAL_TOKEN: ${{ vars.VITE_GCAL_TOKEN }}
           VITE_EMAILJS_PUBLIC_KEY: ${{ vars.VITE_EMAILJS_PUBLIC_KEY }}
           VITE_EMAILJS_SERVICE_ID: ${{ vars.VITE_EMAILJS_SERVICE_ID }}
-          VITE_EMAILJS_BOOKING_TEMPLATE_ID: ${{ vars.VITE_EMAILJS_BOOKING_TEMPLATE_ID }}
           VITE_EMAILJS_CONTACT_TEMPLATE_ID: ${{ vars.VITE_EMAILJS_CONTACT_TEMPLATE_ID }}
           VITE_PLAUSIBLE_DOMAIN: ${{ vars.VITE_PLAUSIBLE_DOMAIN }}
+          VITE_STRIPE_PUBLISHABLE_KEY: ${{ vars.VITE_STRIPE_PUBLISHABLE_KEY }}
         run: bun run build
 
       - uses: actions/configure-pages@v5

@@ -10,10 +10,36 @@ import Footer from "./components/Footer.jsx";
 import WhatsAppFab from "./components/WhatsAppFab.jsx";
 import { initEmail } from "./lib/email.js";
 
+function resumeStripeRedirect() {
+  const params = new URLSearchParams(window.location.search);
+  const piId = params.get("payment_intent");
+  const status = params.get("redirect_status");
+  if (!piId) return null;
+
+  const pending = JSON.parse(sessionStorage.getItem("luzze.pendingBooking") || "null");
+  // Clean the URL either way so refreshes don't re-trigger.
+  window.history.replaceState({}, "", window.location.pathname);
+
+  if (!pending || pending.paymentIntentId !== piId) return null;
+  if (status !== "succeeded") return null;
+
+  return {
+    service: pending.service,
+    customer: pending.customer,
+    slot: {
+      start: new Date(pending.slot.start),
+      end: new Date(pending.slot.end),
+    },
+    bookingId: pending.bookingId,
+    paymentIntentId: pending.paymentIntentId,
+  };
+}
+
 export default function App() {
   const [current, setCurrent] = useState(0);
   const [booking, setBooking] = useState(null);
   const [legal, setLegal] = useState(null);
+  const [resumedBooking, setResumedBooking] = useState(null);
 
   useEffect(() => {
     initEmail();
@@ -26,6 +52,8 @@ export default function App() {
       s.src = "https://plausible.io/js/script.js";
       document.head.appendChild(s);
     }
+    const resumed = resumeStripeRedirect();
+    if (resumed) setResumedBooking(resumed);
   }, []);
 
   useEffect(() => {
@@ -45,6 +73,17 @@ export default function App() {
       <Footer onOpenLegal={setLegal} />
       <WhatsAppFab />
       {booking && <BookingModal service={booking} onClose={() => setBooking(null)} />}
+      {resumedBooking && (
+        <BookingModal
+          service={resumedBooking.service}
+          slot={resumedBooking.slot}
+          customer={resumedBooking.customer}
+          bookingId={resumedBooking.bookingId}
+          paymentIntentId={resumedBooking.paymentIntentId}
+          initialStep="finalizing"
+          onClose={() => setResumedBooking(null)}
+        />
+      )}
       {legal && <LegalModal doc={legal} onClose={() => setLegal(null)} />}
     </div>
   );

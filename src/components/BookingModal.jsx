@@ -1,15 +1,12 @@
 import { useEffect, useState } from "react";
 import Calendar from "./Calendar.jsx";
-import PaymentForm from "./PaymentForm.jsx";
-import { createEvent } from "../lib/gcal.js";
-import { sendBookingConfirm } from "../lib/email.js";
+import StripePaymentStep from "./StripePaymentStep.jsx";
+import { finalizeBooking } from "../lib/stripe.js";
 import { formatSlotRangeFull } from "../lib/time.js";
 
 function logFailedBooking(payload) {
   try {
-    const existing = JSON.parse(
-      localStorage.getItem("luzze.failedBookings") || "[]"
-    );
+    const existing = JSON.parse(localStorage.getItem("luzze.failedBookings") || "[]");
     existing.push({
       at: new Date().toISOString(),
       customer: payload.customer,
@@ -18,6 +15,7 @@ function logFailedBooking(payload) {
         start: payload.slot.start.toISOString(),
         end: payload.slot.end.toISOString(),
       },
+      paymentIntentId: payload.paymentIntentId,
     });
     localStorage.setItem("luzze.failedBookings", JSON.stringify(existing));
   } catch (err) {
@@ -25,11 +23,14 @@ function logFailedBooking(payload) {
   }
 }
 
-export default function BookingModal({ service, onClose }) {
-  const [step, setStep] = useState("calendar"); // calendar | payment | confirming | done | error
-  const [slot, setSlot] = useState(null);
+export default function BookingModal({ service, slot: initialSlot, initialStep, paymentIntentId, bookingId, customer: initialCustomer, onClose }) {
+  const [step, setStep] = useState(initialStep || "calendar");
+  const [slot, setSlot] = useState(initialSlot || null);
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
+  const [pendingPI, setPendingPI] = useState(paymentIntentId || null);
+  const [pendingBookingId, setPendingBookingId] = useState(bookingId || null);
+  const [customer, setCustomer] = useState(initialCustomer || null);
 
   useEffect(() => {
     const prev = document.body.style.overflow;
@@ -44,69 +45,79 @@ export default function BookingModal({ service, onClose }) {
     };
   }, [onClose]);
 
+  // If we were opened mid-finalize (resume from 3DS redirect), kick it off immediately.
+  useEffect(() => {
+    if (initialStep === "finalizing" && pendingPI && pendingBookingId) {
+      runFinalize(pendingBookingId, pendingPI);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const onSlot = (s) => {
     setSlot(s);
     setStep("payment");
   };
 
-  const onPaid = async (customer) => {
+  const runFinalize = async (bookingIdArg, paymentIntentIdArg) => {
     setStep("confirming");
     setError(null);
     try {
-      const title = `Luzze: ${service.title} — ${customer.name}`;
-      const [eventRes, emailRes] = await Promise.allSettled([
-        createEvent({
-          title,
-          start: slot.start,
-          end: slot.end,
-          email: customer.email,
-          notes: `${service.title} (${service.price}) booked via luzze website.`,
-        }),
-        sendBookingConfirm({
-          name: customer.name,
-          email: customer.email,
-          service: service.title,
-          price: service.price,
-          slotStart: formatSlotRangeFull(slot.start, slot.end),
-          slotEnd: slot.end.toISOString(),
-        }),
-      ]);
-      const eventFailed = eventRes.status === "rejected";
-      const emailFailed = emailRes.status === "rejected";
-      if (eventFailed && emailFailed) {
-        logFailedBooking({ customer, service, slot });
+      const res = await finalizeBooking({
+        bookingId: bookingIdArg,
+        paymentIntentId: paymentIntentIdArg,
+      });
+      sessionStorage.removeItem("luzze.pendingBooking");
+      if (!res.confirmed) {
+        throw new Error(res.error || "finalize_failed");
       }
       setResult({
-        customer,
-        eventFailed,
-        emailFailed,
-        eventSkipped: eventRes.value?.skipped,
-        emailSkipped: emailRes.value?.skipped,
+        customer: customer || {},
+        eventId: res.eventId,
+        cached: res.cached,
       });
       setStep("done");
     } catch (err) {
       console.error(err);
-      logFailedBooking({ customer, service, slot });
-      setError("Something went wrong completing your booking.");
+      logFailedBooking({
+        customer: customer || {},
+        service,
+        slot: slot || { start: new Date(), end: new Date() },
+        paymentIntentId: paymentIntentIdArg,
+      });
+      setError(
+        err.message === "slot_conflict_refunded"
+          ? "That slot was taken while you were paying — we've refunded the charge. Please book another time."
+          : "Your payment went through, but we couldn't finalise the booking automatically. Sauda has been notified; please email sauda.luzze@gmail.com to confirm."
+      );
       setStep("error");
     }
   };
 
-  const buildMailtoFallback = (customer) => {
+  const onPaid = ({ customer: c, bookingId: bId, paymentIntentId: piId }) => {
+    setCustomer(c);
+    setPendingBookingId(bId);
+    setPendingPI(piId);
+    runFinalize(bId, piId);
+  };
+
+  const buildMailtoFallback = () => {
+    const c = customer || {};
     const subject = encodeURIComponent(
-      `Luzze booking — ${service.title} — ${customer.name}`
+      `Luzze booking — ${service.title} — ${c.name || c.email || "customer"}`
     );
     const body = encodeURIComponent(
       [
         "Hi Sauda,",
         "",
-        "My online booking didn't go through automatically. Please confirm this slot manually:",
+        "My online booking hit a snag. Please confirm manually:",
         "",
-        `Name: ${customer.name}`,
-        `Email: ${customer.email}`,
+        `Name: ${c.name || "(not given)"}`,
+        `Email: ${c.email || "(not given)"}`,
         `Service: ${service.title} (${service.price})`,
-        `When: ${formatSlotRangeFull(slot.start, slot.end)}`,
-      ].join("\n")
+        `When: ${slot ? formatSlotRangeFull(slot.start, slot.end) : "(no slot selected)"}`,
+        pendingPI ? `Stripe PaymentIntent: ${pendingPI}` : "",
+        pendingBookingId ? `Booking id: ${pendingBookingId}` : "",
+      ].filter(Boolean).join("\n")
     );
     return `mailto:sauda.luzze@gmail.com?subject=${subject}&body=${body}`;
   };
@@ -176,9 +187,9 @@ export default function BookingModal({ service, onClose }) {
         >
           {step === "calendar" && "Step 1 of 3 — Pick a time"}
           {step === "payment" && "Step 2 of 3 — Payment"}
-          {step === "confirming" && "Step 3 of 3 — Confirming"}
+          {step === "confirming" && "Step 3 of 3 — Finalising"}
           {step === "done" && "Booking confirmed"}
-          {step === "error" && "Something went wrong"}
+          {step === "error" && "Needs attention"}
         </div>
         <h2
           id="luzze-booking-title"
@@ -198,18 +209,19 @@ export default function BookingModal({ service, onClose }) {
 
         {step === "calendar" && <Calendar onSelect={onSlot} />}
         {step === "payment" && slot && (
-          <PaymentForm
-            service={{ ...service, slot }}
+          <StripePaymentStep
+            service={service}
+            slot={slot}
             onPaid={onPaid}
             onBack={() => setStep("calendar")}
           />
         )}
         {step === "confirming" && (
-          <div style={{ padding: 32, textAlign: "center", color: "rgba(74,92,106,0.7)" }}>
-            Creating your booking…
+          <div style={{ padding: 32, textAlign: "center", color: "rgba(74,92,106,0.75)" }}>
+            Finalising your booking…
           </div>
         )}
-        {step === "done" && result && (
+        {step === "done" && result && slot && (
           <div>
             <div
               style={{
@@ -222,47 +234,11 @@ export default function BookingModal({ service, onClose }) {
                 lineHeight: 1.6,
               }}
             >
-              You're booked in for{" "}
-              <strong>{formatSlotRangeFull(slot.start, slot.end)}</strong>
-              . {result.emailFailed || result.emailSkipped
-                ? "(A confirmation email could not be sent — Sauda will reach out directly.)"
-                : `A confirmation email is on its way to ${result.customer.email}.`}
+              You're booked in for <strong>{formatSlotRangeFull(slot.start, slot.end)}</strong>.
+              A confirmation email and calendar invite are on their way
+              {customer?.email ? ` to ${customer.email}` : ""}.
+              {result.cached && " (Already confirmed — no duplicate created.)"}
             </div>
-            {(result.eventFailed || result.eventSkipped) && (
-              <div
-                style={{
-                  padding: 12,
-                  background: "rgba(255,200,120,0.12)",
-                  border: "1px solid rgba(255,200,120,0.35)",
-                  color: "#7a5a18",
-                  fontSize: 12,
-                  marginBottom: 16,
-                  lineHeight: 1.5,
-                }}
-              >
-                Heads up: the calendar event could not be written automatically (demo mode or
-                endpoint not configured). Sauda will add it manually.
-              </div>
-            )}
-            {result.eventFailed && result.emailFailed && (
-              <a
-                href={buildMailtoFallback(result.customer)}
-                style={{
-                  display: "block",
-                  textAlign: "center",
-                  padding: 12,
-                  background: "rgba(199,90,90,0.12)",
-                  border: "1px solid rgba(199,90,90,0.35)",
-                  color: "#c75a5a",
-                  fontSize: 13,
-                  marginBottom: 16,
-                  textDecoration: "none",
-                  fontWeight: 600,
-                }}
-              >
-                Email Sauda directly to confirm →
-              </a>
-            )}
             <button
               onClick={onClose}
               style={{
@@ -284,26 +260,28 @@ export default function BookingModal({ service, onClose }) {
         )}
         {step === "error" && (
           <div>
-            <div style={{ color: "#c75a5a", marginBottom: 20 }}>{error}</div>
+            <div style={{ color: "#c75a5a", marginBottom: 20, lineHeight: 1.6 }}>{error}</div>
             <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
               <button
-                onClick={() => setStep("payment")}
+                onClick={() => pendingPI && pendingBookingId && runFinalize(pendingBookingId, pendingPI)}
+                disabled={!pendingPI}
                 style={{
                   background: "#3EA8C8",
                   color: "#fff",
                   border: "none",
                   padding: "12px 24px",
-                  cursor: "pointer",
+                  cursor: pendingPI ? "pointer" : "not-allowed",
                   fontWeight: 600,
                   letterSpacing: 2,
                   textTransform: "uppercase",
                   fontSize: 12,
+                  opacity: pendingPI ? 1 : 0.5,
                 }}
               >
                 Try again
               </button>
               <a
-                href={`mailto:sauda.luzze@gmail.com?subject=Luzze%20booking%20help&body=My%20booking%20didn%27t%20go%20through.`}
+                href={buildMailtoFallback()}
                 style={{
                   display: "inline-flex",
                   alignItems: "center",

@@ -17,7 +17,9 @@ export async function getBusy(date) {
   const url = `${ENDPOINT}?action=busy&date=${toISODate(date)}`;
   const res = await fetch(url);
   if (!res.ok) throw new Error(`Failed to fetch busy times (${res.status})`);
-  return res.json();
+  const data = await res.json();
+  if (data && data.error) throw new Error(`Availability service error: ${data.error}`);
+  return data;
 }
 
 export async function createEvent({ title, start, end, email, notes }) {

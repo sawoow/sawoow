@@ -103,7 +103,7 @@ export default function BookingModal({ service, slot: initialSlot, initialStep, 
   const buildMailtoFallback = () => {
     const c = customer || {};
     const subject = encodeURIComponent(
-      `Luzze booking — ${service.title} — ${c.name || c.email || "customer"}`
+      `Luzze consultancy booking — ${service.title} — ${c.name || c.email || "customer"}`
     );
     const body = encodeURIComponent(
       [

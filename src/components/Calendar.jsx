@@ -106,12 +106,17 @@ export default function Calendar({ onSelect }) {
     getBusy(selectedDate)
       .then((data) => {
         if (cancelled) return;
+        if (data?.stubbed && import.meta.env.PROD) {
+          setError("Availability check is unavailable. Please try again or contact us directly.");
+          setBusy([]);
+          return;
+        }
         setBusy(Array.isArray(data?.busy) ? data.busy : []);
       })
       .catch((err) => {
         if (cancelled) return;
         console.error(err);
-        setError("Could not load availability. Showing all slots as available.");
+        setError("Could not load availability. Please try again in a moment, or contact us directly to book.");
         setBusy([]);
       })
       .finally(() => {
@@ -272,7 +277,7 @@ export default function Calendar({ onSelect }) {
           )}
           {loadingSlots ? (
             <div style={{ color: "rgba(74,92,106,0.7)", fontSize: 14 }}>Loading…</div>
-          ) : slots.length === 0 ? (
+          ) : error ? null : slots.length === 0 ? (
             <div style={{ color: "rgba(74,92,106,0.7)", fontSize: 14 }}>
               No slots available on this day.
             </div>

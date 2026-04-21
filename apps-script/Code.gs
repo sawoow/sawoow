@@ -145,11 +145,11 @@ function handleBusy_(e) {
     return jsonOut_({ error: "invalid date" });
   }
   var parts = dateStr.split("-");
+  // Build the window as midnight-to-midnight EAT (UTC+3) explicitly so the
+  // result is correct regardless of the Apps Script project timezone setting.
+  var EAT_OFFSET_MS = 3 * 60 * 60 * 1000;
   var start = new Date(
-    parseInt(parts[0], 10),
-    parseInt(parts[1], 10) - 1,
-    parseInt(parts[2], 10),
-    0, 0, 0
+    Date.UTC(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10)) - EAT_OFFSET_MS
   );
   var end = new Date(start.getTime() + 24 * 60 * 60 * 1000);
   var events = getCalendar_().getEvents(start, end);
@@ -270,7 +270,7 @@ function finalizeBooking_(paymentIntentId, expectedBookingId) {
     var when = Utilities.formatDate(start, "Africa/Nairobi", "EEEE d MMMM yyyy, HH:mm");
     MailApp.sendEmail({
       to: md.customer_email,
-      subject: "Your Luzze booking is confirmed — " + md.service_title,
+      subject: "Your Luzze Consultancy booking is confirmed — " + md.service_title,
       body: [
         "Hi " + (md.customer_name || "there") + ",",
         "",

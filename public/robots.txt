@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://sawoow-luzze.github.io/sawoow-luzze/sitemap.xml
+Sitemap: https://sawoow.github.io/sawoow/sitemap.xml

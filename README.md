@@ -6,7 +6,7 @@ for returning home to Uganda. Built with **Vite + React**, deployed to
 payment → confirmation email), a Google Calendar sync through a Google
 Apps Script web app, and a contact form powered by EmailJS.
 
-Live site: <https://sawoow-luzze.github.io/sawoow-luzze/>
+Live site: <https://sawoow.github.io/sawoow/>
 
 ## Local development
 
@@ -166,8 +166,8 @@ photos, follow `public/images/README.md`.
    rather than a real secret.
 
 The deployed site will live at
-`https://<owner>.github.io/sawoow-luzze/`. The Vite `base` is already
-set to `/sawoow-luzze/` in `vite.config.js`.
+`https://<owner>.github.io/sawoow/`. The Vite `base` is already
+set to `/sawoow/` in `vite.config.js`.
 
 ## Project layout
 
